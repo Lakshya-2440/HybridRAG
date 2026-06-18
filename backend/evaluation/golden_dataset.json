@@ -1,0 +1,6 @@
+{
+  "version": "1.0",
+  "description": "Auto-generated golden dataset via RAGAS TestsetGenerator. Upload documents and call POST /eval/generate to populate.",
+  "num_questions": 0,
+  "questions": []
+}

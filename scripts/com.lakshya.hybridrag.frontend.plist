@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.lakshya.hybridrag.frontend</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/lakshyagupta/.nvm/versions/node/v20.20.0/bin/node</string>
+    <string>node_modules/next/dist/bin/next</string>
+    <string>dev</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/lakshyagupta/Desktop/HybridRAG/frontend</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/hybridrag/frontend.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/hybridrag/frontend.err.log</string>
+</dict>
+</plist>

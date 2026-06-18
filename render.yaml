@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: rag-backend
+    runtime: python
+    region: oregon
+    plan: starter
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: .
+    healthCheckPath: /health
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: COHERE_API_KEY
+        sync: false
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: CHROMA_PERSIST_DIR
+        value: /data/chroma_db
+      - key: DATABASE_URL
+        value: sqlite:////data/rag.db
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      - key: BM25_CORPUS_PATH
+        value: /data/bm25_corpus.json
+      - key: PYTHONPATH
+        value: backend
+      - key: USE_REMOTE_MODELS
+        value: "true"
+      - key: FRONTEND_URL
+        sync: false
+      - key: LLM_MODEL
+        value: google/gemini-2.5-flash
+      - key: EMBEDDING_MODEL
+        value: openai/text-embedding-3-small
+      - key: RERANK_MODEL
+        value: rerank-english-v3.0
+      - key: MIN_FAITHFULNESS_SCORE
+        value: "0.80"
+      - key: MIN_ANSWER_RELEVANCY_SCORE
+        value: "0.75"
+      - key: CHUNK_SIZE
+        value: "700"
+      - key: CHUNK_OVERLAP
+        value: "100"
+      - key: TOP_K_RETRIEVAL
+        value: "20"
+      - key: TOP_K_RERANK
+        value: "5"
+    disk:
+      name: rag-persistent-storage
+      mountPath: /data
+      sizeGB: 10

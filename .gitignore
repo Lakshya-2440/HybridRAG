@@ -1,0 +1,16 @@
+.env
+chroma_db/
+uploads/
+*.db
+bm25_corpus.json
+__pycache__/
+.pytest_cache/
+.next/
+node_modules/
+eval_results.json
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+backend/.pytest_cache/
+backend/__pycache__/
+*.pyc

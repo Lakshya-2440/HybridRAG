@@ -1,0 +1,5 @@
+Before finalizing your response, verify each claim:
+- Does it have a citation?
+- Does the citation reference a chunk actually provided to you?
+- Is there any claim without grounding in the chunks?
+Remove any ungrounded claims. Add missing citations. Only then output your final answer.
