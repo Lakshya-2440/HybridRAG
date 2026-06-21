@@ -32,3 +32,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Force relative paths for persistent storage on Render free tier
+settings.chroma_persist_dir = "./data/chroma_db"
+settings.database_url = "sqlite:///./data/rag.db"
+settings.upload_dir = "./data/uploads"
+settings.bm25_corpus_path = "./data/bm25_corpus.json"

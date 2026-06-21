@@ -18,13 +18,13 @@ services:
       - key: LOG_LEVEL
         value: INFO
       - key: CHROMA_PERSIST_DIR
-        value: /data/chroma_db
+        value: ./data/chroma_db
       - key: DATABASE_URL
-        value: sqlite:////data/rag.db
+        value: sqlite:///./data/rag.db
       - key: UPLOAD_DIR
-        value: /data/uploads
+        value: ./data/uploads
       - key: BM25_CORPUS_PATH
-        value: /data/bm25_corpus.json
+        value: ./data/bm25_corpus.json
       - key: PYTHONPATH
         value: backend
       - key: USE_REMOTE_MODELS
@@ -49,7 +49,3 @@ services:
         value: "20"
       - key: TOP_K_RERANK
         value: "5"
-    disk:
-      name: rag-persistent-storage
-      mountPath: /data
-      sizeGB: 10
