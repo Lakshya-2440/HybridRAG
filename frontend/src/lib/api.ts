@@ -56,10 +56,15 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     let message = `Request failed with ${response.status}`;
     try {
-      const error = await response.json();
-      message = error.detail || message;
+      const text = await response.text();
+      try {
+        const error = JSON.parse(text);
+        message = error.detail || error.message || message;
+      } catch {
+        message = text || message;
+      }
     } catch {
-      message = await response.text();
+      // Ignore text reading errors
     }
     throw new Error(message);
   }
