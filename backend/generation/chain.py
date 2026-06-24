@@ -75,14 +75,11 @@ def get_llm():
     }
     return ChatOpenAI(
         api_key=settings.openrouter_api_key,
-        openai_api_key=settings.openrouter_api_key,
         base_url="https://openrouter.ai/api/v1",
         model=settings.llm_model,
         temperature=0.0,
         max_tokens=800,
         default_headers=headers,
-        custom_headers=headers,
-        model_kwargs={"default_headers": headers, "custom_headers": headers},
         http_client=httpx.Client(headers=headers),
         http_async_client=httpx.AsyncClient(headers=headers),
     )
