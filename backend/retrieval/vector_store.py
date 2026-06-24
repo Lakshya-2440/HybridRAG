@@ -73,10 +73,13 @@ def get_langchain_embeddings() -> OpenAIEmbeddings:
         "Authorization": f"Bearer {settings.openrouter_api_key}",
     }
     return OpenAIEmbeddings(
+        api_key=settings.openrouter_api_key,
         openai_api_key=settings.openrouter_api_key,
         openai_api_base="https://openrouter.ai/api/v1",
         model=settings.embedding_model,
         default_headers=headers,
+        custom_headers=headers,
+        model_kwargs={"default_headers": headers, "custom_headers": headers},
         http_client=httpx.Client(headers=headers),
         http_async_client=httpx.AsyncClient(headers=headers),
     )
