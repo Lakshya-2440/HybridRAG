@@ -3,13 +3,13 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    openrouter_api_key: str = ""
-    cohere_api_key: str = ""
+    openrouter_api_key: str = "sk-or-v188ead62395cf4128117a23dfe917a7ac1e7c68cc30d066dc67da29aee56ecd6d"
+    cohere_api_key: str = "acPwRMBqsl7zutU1kqxYVleAlj2E8SNkVKMnUwiP"
     app_env: str = "development"
     log_level: str = "INFO"
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
-    frontend_url: str = "http://localhost:3000"
+    frontend_url: str = "https://hybridrag-gamma.vercel.app"
     chroma_persist_dir: str = "./chroma_db"
     database_url: str = "sqlite:///./rag.db"
     upload_dir: str = "./uploads"
