@@ -1,6 +1,5 @@
 {
   "framework": "nextjs",
-  "rootDirectory": "frontend",
   "rewrites": [
     {
       "source": "/api/:path*",
