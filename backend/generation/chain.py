@@ -76,6 +76,7 @@ def get_llm():
         default_headers={
             "HTTP-Referer": "https://rag-system.app",
             "X-Title": "RAG System",
+            "Authorization": f"Bearer {settings.openrouter_api_key}",
         }
     )
 

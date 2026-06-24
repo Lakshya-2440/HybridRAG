@@ -42,6 +42,7 @@ def get_embedding_client() -> OpenAI:
         default_headers={
             "HTTP-Referer": "https://rag-system.app",
             "X-Title": "RAG System",
+            "Authorization": f"Bearer {settings.openrouter_api_key}",
         },
     )
 
@@ -67,6 +68,11 @@ def get_langchain_embeddings() -> OpenAIEmbeddings:
         openai_api_key=settings.openrouter_api_key,
         openai_api_base="https://openrouter.ai/api/v1",
         model=settings.embedding_model,
+        default_headers={
+            "HTTP-Referer": "https://rag-system.app",
+            "X-Title": "RAG System",
+            "Authorization": f"Bearer {settings.openrouter_api_key}",
+        },
     )
 
 
