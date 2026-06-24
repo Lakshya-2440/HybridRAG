@@ -74,7 +74,7 @@ def get_llm():
         "Authorization": f"Bearer {settings.openrouter_api_key}",
     }
     return ChatOpenAI(
-        api_key=settings.openrouter_api_key,
+        openai_api_key=settings.openrouter_api_key,
         base_url="https://openrouter.ai/api/v1",
         model=settings.llm_model,
         temperature=0.0,

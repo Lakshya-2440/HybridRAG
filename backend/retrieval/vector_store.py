@@ -73,7 +73,7 @@ def get_langchain_embeddings() -> OpenAIEmbeddings:
         "Authorization": f"Bearer {settings.openrouter_api_key}",
     }
     return OpenAIEmbeddings(
-        api_key=settings.openrouter_api_key,
+        openai_api_key=settings.openrouter_api_key,
         openai_api_base="https://openrouter.ai/api/v1",
         model=settings.embedding_model,
         default_headers=headers,
