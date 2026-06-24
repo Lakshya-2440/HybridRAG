@@ -9,6 +9,7 @@ import re
 import chromadb
 from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
+import httpx
 
 try:
     from config import settings
@@ -36,14 +37,16 @@ def _local_embedding(text: str) -> list[float]:
 
 
 def get_embedding_client() -> OpenAI:
+    headers = {
+        "HTTP-Referer": "https://rag-system.app",
+        "X-Title": "RAG System",
+        "Authorization": f"Bearer {settings.openrouter_api_key}",
+    }
     return OpenAI(
         api_key=settings.openrouter_api_key,
         base_url="https://openrouter.ai/api/v1",
-        default_headers={
-            "HTTP-Referer": "https://rag-system.app",
-            "X-Title": "RAG System",
-            "Authorization": f"Bearer {settings.openrouter_api_key}",
-        },
+        default_headers=headers,
+        http_client=httpx.Client(headers=headers),
     )
 
 
@@ -64,15 +67,18 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
 
 
 def get_langchain_embeddings() -> OpenAIEmbeddings:
+    headers = {
+        "HTTP-Referer": "https://rag-system.app",
+        "X-Title": "RAG System",
+        "Authorization": f"Bearer {settings.openrouter_api_key}",
+    }
     return OpenAIEmbeddings(
         openai_api_key=settings.openrouter_api_key,
         openai_api_base="https://openrouter.ai/api/v1",
         model=settings.embedding_model,
-        default_headers={
-            "HTTP-Referer": "https://rag-system.app",
-            "X-Title": "RAG System",
-            "Authorization": f"Bearer {settings.openrouter_api_key}",
-        },
+        default_headers=headers,
+        http_client=httpx.Client(headers=headers),
+        http_async_client=httpx.AsyncClient(headers=headers),
     )
 
 

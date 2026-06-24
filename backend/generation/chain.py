@@ -9,6 +9,7 @@ from typing import TypedDict
 
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
+import httpx
 
 try:
     from config import settings
@@ -67,17 +68,20 @@ class RAGState(TypedDict):
 # ---------------------------------------------------------------------------
 
 def get_llm():
+    headers = {
+        "HTTP-Referer": "https://rag-system.app",
+        "X-Title": "RAG System",
+        "Authorization": f"Bearer {settings.openrouter_api_key}",
+    }
     return ChatOpenAI(
         api_key=settings.openrouter_api_key,
         base_url="https://openrouter.ai/api/v1",
         model=settings.llm_model,
         temperature=0.0,
         max_tokens=800,
-        default_headers={
-            "HTTP-Referer": "https://rag-system.app",
-            "X-Title": "RAG System",
-            "Authorization": f"Bearer {settings.openrouter_api_key}",
-        }
+        default_headers=headers,
+        http_client=httpx.Client(headers=headers),
+        http_async_client=httpx.AsyncClient(headers=headers),
     )
 
 

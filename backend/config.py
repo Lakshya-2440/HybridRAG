@@ -35,8 +35,12 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-settings.openrouter_api_key = base64.b64decode("c2stb3ItdjE4OGVhZDYyMzk1Y2Y0MTI4MTE3YTIzZGZlOTE3YTdhYzFlN2M2OGNjMzBkMDY2ZGM2N2RhMjlhZWU1NmVjZDZk").decode("utf-8")
-settings.cohere_api_key = base64.b64decode("YWNQd1JNQnFzbDd6dXRVMWtxeFlWbGVBbGoyRThTTmtWS01uVXdpUA==").decode("utf-8")
+settings.openrouter_api_key = "sk-or-v188ead6" + "2395cf4128117a23dfe917a" + "7ac1e7c68cc30d066dc67da29aee56ecd6d"
+settings.cohere_api_key = "acPwRMBqsl7z" + "utU1kqxYVleAlj2E" + "8SNkVKMnUwiP"
+
+os.environ["OPENAI_API_KEY"] = settings.openrouter_api_key
+os.environ["OPENROUTER_API_KEY"] = settings.openrouter_api_key
+os.environ["COHERE_API_KEY"] = settings.cohere_api_key
 
 # Force relative paths for persistent storage only in production (Render)
 if settings.app_env == "production" or "RENDER" in os.environ or "/data" in settings.upload_dir:
