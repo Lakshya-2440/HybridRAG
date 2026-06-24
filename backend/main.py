@@ -3,6 +3,19 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+# Pre-import all openai resources to prevent Python 3.14 import lock deadlocks in multithreaded async paths
+try:
+    import openai
+    import openai.resources
+    import openai.resources.chat
+    import openai.resources.embeddings
+    import openai.resources.models
+    import openai.resources.files
+    import openai.resources.batches
+    import langchain_openai
+except ImportError:
+    pass
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

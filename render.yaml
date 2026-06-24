@@ -10,9 +10,9 @@ services:
     healthCheckPath: /health
     envVars:
       - key: OPENROUTER_API_KEY
-        sync: false
+        value: sk-or-v188ead62395cf4128117a23dfe917a7ac1e7c68cc30d066dc67da29aee56ecd6d
       - key: COHERE_API_KEY
-        sync: false
+        value: acPwRMBqsl7zutU1kqxYVleAlj2E8SNkVKMnUwiP
       - key: APP_ENV
         value: production
       - key: LOG_LEVEL
@@ -30,7 +30,7 @@ services:
       - key: USE_REMOTE_MODELS
         value: "true"
       - key: FRONTEND_URL
-        sync: false
+        value: https://hybridrag-gamma.vercel.app
       - key: LLM_MODEL
         value: google/gemini-2.5-flash
       - key: EMBEDDING_MODEL
