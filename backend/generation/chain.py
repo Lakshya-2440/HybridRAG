@@ -67,8 +67,25 @@ class RAGState(TypedDict):
 # LLM helpers
 # ---------------------------------------------------------------------------
 
+class OpenRouterLLM:
+    def __init__(self, client, model):
+        self.client = client
+        self.model = model
+
+    def invoke(self, prompt: str):
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": str(prompt)}],
+            temperature=0.0,
+            max_tokens=800,
+        )
+        class Response:
+            content = response.choices[0].message.content
+        return Response()
+
+
 def get_llm():
-    from openai import OpenAI, AsyncOpenAI
+    from openai import OpenAI
     headers = {
         "HTTP-Referer": "https://rag-system.app",
         "X-Title": "RAG System",
@@ -80,25 +97,7 @@ def get_llm():
         default_headers=headers,
         http_client=httpx.Client(base_url="https://openrouter.ai/api/v1", headers=headers),
     )
-    async_client = AsyncOpenAI(
-        api_key=settings.openrouter_api_key,
-        base_url="https://openrouter.ai/api/v1",
-        default_headers=headers,
-        http_client=httpx.AsyncClient(base_url="https://openrouter.ai/api/v1", headers=headers),
-    )
-    return ChatOpenAI(
-        client=sync_client.chat.completions,
-        async_client=async_client.chat.completions,
-        api_key=settings.openrouter_api_key,
-        openai_api_key=settings.openrouter_api_key,
-        base_url="https://openrouter.ai/api/v1",
-        openai_api_base="https://openrouter.ai/api/v1",
-        model=settings.llm_model,
-        temperature=0.0,
-        max_tokens=800,
-        default_headers=headers,
-        model_kwargs={"extra_headers": headers},
-    )
+    return OpenRouterLLM(sync_client, settings.llm_model)
 
 
 # ---------------------------------------------------------------------------
