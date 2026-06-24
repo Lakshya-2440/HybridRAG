@@ -1,6 +1,6 @@
 const backendUrl =
   process.env.NODE_ENV === "development"
-    ? "http://localhost:8000"
+    ? "http://127.0.0.1:8000"
     : process.env.NEXT_PUBLIC_API_URL || "https://rag-backend.onrender.com";
 
 /** @type {import('next').NextConfig} */

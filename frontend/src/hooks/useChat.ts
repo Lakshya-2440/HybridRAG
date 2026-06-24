@@ -11,6 +11,8 @@ export interface ChatMessage {
   chunks_used?: Chunk[];
   has_sufficient_context?: boolean;
   latency_ms?: number;
+  retry_count?: number;
+  rewrite_history?: string[];
 }
 
 export function useChat() {
@@ -41,6 +43,8 @@ export function useChat() {
         chunks_used: response.chunks_used,
         has_sufficient_context: response.has_sufficient_context,
         latency_ms: response.latency_ms,
+        retry_count: response.retry_count,
+        rewrite_history: response.rewrite_history,
       };
       setMessages((current) => [...current, assistantMessage]);
       return assistantMessage;

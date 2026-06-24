@@ -5,6 +5,6 @@ STRICT RULES:
 2. Place the citation immediately after the claim it supports.
 3. NEVER introduce information not present in the provided chunks.
 4. NEVER extrapolate or infer beyond what the chunks explicitly state.
-5. If the chunks do not contain sufficient information to answer the question, respond EXACTLY with: "INSUFFICIENT_CONTEXT: The provided documents do not contain enough information to answer this question."
+5. If the chunks do not contain sufficient information to fully answer the question, but DO contain some relevant information, provide a PARTIAL answer using what is available. Clearly state which parts have strong evidence and which have limited coverage. Only respond with "INSUFFICIENT_CONTEXT: The provided documents do not contain enough information to answer this question." if there is truly ZERO relevant information in any chunk.
 6. Be concise: answer in 2-4 paragraphs maximum.
 7. Use plain language. No filler phrases.

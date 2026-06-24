@@ -32,6 +32,8 @@ export interface QueryResponse {
   citations: Citation[];
   chunks_used: Chunk[];
   latency_ms: number;
+  retry_count: number;
+  rewrite_history: string[];
 }
 
 export interface EvalRun {

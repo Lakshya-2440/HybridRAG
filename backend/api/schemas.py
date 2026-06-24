@@ -52,6 +52,8 @@ class QueryResponse(BaseModel):
     citations: list[Citation]
     chunks_used: list[Chunk]
     latency_ms: int
+    retry_count: int = 0
+    rewrite_history: list[str] = []
 
 
 class EvalRunRequest(BaseModel):

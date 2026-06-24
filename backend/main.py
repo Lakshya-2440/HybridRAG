@@ -22,13 +22,31 @@ except ImportError:  # pragma: no cover
     from .retrieval.vector_store import vector_store
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
-Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+
+# Ensure storage directories exist
+for dir_path in [settings.upload_dir, settings.chroma_persist_dir]:
+    Path(dir_path).mkdir(parents=True, exist_ok=True)
+# Ensure parent dir for sqlite db and bm25 corpus
+Path(settings.bm25_corpus_path).parent.mkdir(parents=True, exist_ok=True)
+db_path = settings.database_url.replace("sqlite:///", "")
+if db_path:
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="RAG System", version="1.0.0")
 
+# CORS: allow frontend origin + any localhost for dev + Vercel preview URLs
+allowed_origins = [settings.frontend_url]
+if settings.app_env != "production":
+    allowed_origins += [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://127.0.0.1:3000",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url],
+    allow_origins=allowed_origins,
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],

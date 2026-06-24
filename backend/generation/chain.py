@@ -38,9 +38,16 @@ PROFILE_HINTS = {
     "skills", "experience", "education",
 }
 
+MAX_RETRIES = 3
+
+
+# ---------------------------------------------------------------------------
+# State
+# ---------------------------------------------------------------------------
 
 class RAGState(TypedDict):
     query: str
+    original_query: str
     doc_ids: list[str] | None
     vector_results: list[dict]
     bm25_results: list[dict]
@@ -50,7 +57,14 @@ class RAGState(TypedDict):
     citations: list[dict]
     has_sufficient_context: bool
     latency_ms: int
+    retry_count: int
+    rewrite_history: list[str]
+    all_chunks_seen: list[dict]
 
+
+# ---------------------------------------------------------------------------
+# LLM helpers
+# ---------------------------------------------------------------------------
 
 def get_llm():
     return ChatOpenAI(
@@ -65,6 +79,10 @@ def get_llm():
         }
     )
 
+
+# ---------------------------------------------------------------------------
+# Retrieval nodes
+# ---------------------------------------------------------------------------
 
 async def retrieve_vector(state: RAGState) -> dict:
     if _is_profile_query(state["query"]):
@@ -86,7 +104,7 @@ async def retrieve_vector(state: RAGState) -> dict:
             settings.top_k_retrieval,
             state.get("doc_ids"),
         )
-    logger.info("Vector retrieval count=%s query=%s", len(results), state["query"])
+    logger.info("Vector retrieval count=%s query=%s retry=%s", len(results), state["query"], state.get("retry_count", 0))
     return {"vector_results": results}
 
 
@@ -112,9 +130,16 @@ async def rerank_chunks(state: RAGState) -> dict:
         state.get("hybrid_results", []),
         top_n,
     )
-    logger.info("Reranked count=%s query=%s", len(results), state["query"])
-    return {"reranked_chunks": results}
+    # Merge with chunks from previous retries (deduped)
+    prev_chunks = state.get("all_chunks_seen", [])
+    merged = _dedupe_chunks(prev_chunks + results)
+    logger.info("Reranked count=%s total_seen=%s query=%s", len(results), len(merged), state["query"])
+    return {"reranked_chunks": results, "all_chunks_seen": merged}
 
+
+# ---------------------------------------------------------------------------
+# Text helpers
+# ---------------------------------------------------------------------------
 
 def _format_context(chunks: list[dict]) -> str:
     lines = []
@@ -196,6 +221,10 @@ def _extract_name(chunks: list[dict]) -> str:
     return "This person"
 
 
+# ---------------------------------------------------------------------------
+# Profile answer builder
+# ---------------------------------------------------------------------------
+
 def _profile_answer(query: str, chunks: list[dict]) -> str:
     ordered = sorted(_dedupe_chunks(chunks), key=lambda c: c["metadata"].get("chunk_index", 0))
     if not ordered:
@@ -263,6 +292,10 @@ def _profile_answer(query: str, chunks: list[dict]) -> str:
     )
 
 
+# ---------------------------------------------------------------------------
+# Local answer (no LLM)
+# ---------------------------------------------------------------------------
+
 def _local_answer(query: str, chunks: list[dict]) -> str:
     if not chunks:
         return "INSUFFICIENT_CONTEXT: The provided documents do not contain enough information to answer this question."
@@ -294,17 +327,36 @@ def _local_answer(query: str, chunks: list[dict]) -> str:
     return "\n".join(answer_parts)
 
 
+# ---------------------------------------------------------------------------
+# Generation node
+# ---------------------------------------------------------------------------
+
 async def generate_answer(state: RAGState) -> dict:
+    # On retries, use merged chunks from all attempts for richer context
+    chunks_to_use = state.get("all_chunks_seen", []) if state.get("retry_count", 0) > 0 else state.get("reranked_chunks", [])
+    if not chunks_to_use:
+        chunks_to_use = state.get("reranked_chunks", [])
+
     if not settings.use_remote_models:
-        answer = _local_answer(state["query"], state.get("reranked_chunks", []))
-        logger.info("Local answer length=%s query=%s", len(answer), state["query"])
+        answer = _local_answer(state["query"], chunks_to_use)
+        logger.info("Local answer length=%s query=%s retry=%s", len(answer), state["query"], state.get("retry_count", 0))
         return {"raw_answer": answer}
 
     system_prompt = (PROMPT_DIR / "system.txt").read_text(encoding="utf-8")
     citation_prompt = (PROMPT_DIR / "citation_enforce.txt").read_text(encoding="utf-8")
+
+    retry_instruction = ""
+    if state.get("retry_count", 0) > 0:
+        retry_instruction = (
+            "\n\nIMPORTANT: This is retry attempt #{retry}. Previous queries did not find sufficient context. "
+            "You now have additional chunks from expanded retrieval. Try harder to find relevant information. "
+            "If you can provide even a partial answer with what's available, do so and note which parts "
+            "have limited evidence rather than saying INSUFFICIENT_CONTEXT."
+        ).format(retry=state["retry_count"])
+
     prompt = (
-        f"{system_prompt}\n\n"
-        f"CONTEXT CHUNKS:\n{_format_context(state.get('reranked_chunks', []))}\n\n"
+        f"{system_prompt}{retry_instruction}\n\n"
+        f"CONTEXT CHUNKS:\n{_format_context(chunks_to_use)}\n\n"
         f"QUESTION: {state['query']}\n\n"
         f"{citation_prompt}\n\n"
         "Answer:"
@@ -312,9 +364,13 @@ async def generate_answer(state: RAGState) -> dict:
     llm = get_llm()
     response = await asyncio.to_thread(llm.invoke, prompt)
     answer = response.content if hasattr(response, "content") else str(response)
-    logger.info("Answer length=%s query=%s", len(answer), state["query"])
+    logger.info("Answer length=%s query=%s retry=%s", len(answer), state["query"], state.get("retry_count", 0))
     return {"raw_answer": answer}
 
+
+# ---------------------------------------------------------------------------
+# Citation extraction + sufficiency check
+# ---------------------------------------------------------------------------
 
 async def extract_and_validate_citations(state: RAGState) -> dict:
     citations = extract_citations(state.get("raw_answer", ""), state.get("reranked_chunks", []))
@@ -323,11 +379,124 @@ async def extract_and_validate_citations(state: RAGState) -> dict:
 
 async def check_context_sufficiency(state: RAGState) -> dict:
     answer = state.get("raw_answer", "")
-    return {"has_sufficient_context": not answer.startswith("INSUFFICIENT_CONTEXT:")}
+    has_sufficient = not answer.startswith("INSUFFICIENT_CONTEXT:")
+    return {"has_sufficient_context": has_sufficient}
 
+
+# ---------------------------------------------------------------------------
+# Query rewriting node (agentic self-correction)
+# ---------------------------------------------------------------------------
+
+async def rewrite_query(state: RAGState) -> dict:
+    """Rewrite the query for better retrieval on retry."""
+    original = state.get("original_query", state["query"])
+    retry_count = state.get("retry_count", 0) + 1
+    history = list(state.get("rewrite_history", []))
+
+    if settings.use_remote_models:
+        rewritten = await _llm_rewrite(original, history, state.get("reranked_chunks", []))
+    else:
+        rewritten = _local_rewrite(original, history, state.get("reranked_chunks", []), retry_count)
+
+    history.append(rewritten)
+    logger.info("Query rewrite: '%s' → '%s' (retry %s)", original, rewritten, retry_count)
+
+    return {
+        "query": rewritten,
+        "retry_count": retry_count,
+        "rewrite_history": history,
+    }
+
+
+async def _llm_rewrite(original: str, history: list[str], chunks: list[dict]) -> str:
+    """Use LLM to intelligently rewrite the query."""
+    rewrite_prompt_path = PROMPT_DIR / "rewrite_prompt.txt"
+    if rewrite_prompt_path.exists():
+        template = rewrite_prompt_path.read_text(encoding="utf-8")
+    else:
+        template = (
+            "You are a search query optimizer. The original question did not retrieve "
+            "sufficient documents. Rewrite it to be more likely to match relevant content.\n\n"
+            "Original question: {original}\n"
+            "Previous attempts: {history}\n"
+            "Available chunk snippets: {snippets}\n\n"
+            "Write ONLY the rewritten query, nothing else."
+        )
+
+    snippets = "\n".join(c["text"][:100] for c in chunks[:5]) if chunks else "No chunks found"
+    history_str = " | ".join(history) if history else "None"
+
+    prompt = template.format(
+        original=original,
+        history=history_str,
+        snippets=snippets,
+    )
+
+    llm = get_llm()
+    response = await asyncio.to_thread(llm.invoke, prompt)
+    rewritten = response.content.strip() if hasattr(response, "content") else str(response).strip()
+
+    # Fallback if LLM returns empty or same query
+    if not rewritten or rewritten.lower() == original.lower():
+        return _local_rewrite(original, history, chunks, len(history) + 1)
+
+    return rewritten
+
+
+def _local_rewrite(original: str, history: list[str], chunks: list[dict], retry_num: int) -> str:
+    """Rewrite query locally by extracting keywords from available chunks and expanding."""
+    original_terms = _query_terms(original)
+
+    # Extract frequent terms from chunks that aren't in original query
+    chunk_terms: dict[str, int] = {}
+    for chunk in chunks[:10]:
+        for token in TOKEN_PATTERN.findall(chunk["text"].lower()):
+            if token not in STOPWORDS and token not in original_terms and len(token) > 2:
+                chunk_terms[token] = chunk_terms.get(token, 0) + 1
+
+    # Pick top expansion terms
+    sorted_terms = sorted(chunk_terms.items(), key=lambda x: x[1], reverse=True)
+    expansion = [term for term, _ in sorted_terms[:3]]
+
+    if retry_num == 1:
+        # First retry: add chunk-derived context terms
+        if expansion:
+            return f"{original} {' '.join(expansion)}"
+        # If no chunks, try broadening
+        return f"{original} overview summary details"
+    elif retry_num == 2:
+        # Second retry: rephrase as keywords
+        terms = list(original_terms)
+        if expansion:
+            terms.extend(expansion[:2])
+        return " ".join(terms)
+    else:
+        # Third retry: maximally broad
+        return f"{original} information context explanation"
+
+
+# ---------------------------------------------------------------------------
+# Routing logic
+# ---------------------------------------------------------------------------
+
+def should_retry(state: RAGState) -> str:
+    """Conditional edge: decide whether to retry or finish."""
+    if state.get("has_sufficient_context", True):
+        return "end"
+    if state.get("retry_count", 0) >= MAX_RETRIES:
+        logger.info("Max retries reached for query=%s", state.get("original_query", state["query"]))
+        return "end"
+    return "retry"
+
+
+# ---------------------------------------------------------------------------
+# Graph
+# ---------------------------------------------------------------------------
 
 def build_graph():
     graph = StateGraph(RAGState)
+
+    # Nodes
     graph.add_node("retrieve_vector", retrieve_vector)
     graph.add_node("retrieve_bm25", retrieve_bm25)
     graph.add_node("fuse_results", fuse_results)
@@ -335,7 +504,9 @@ def build_graph():
     graph.add_node("generate_answer", generate_answer)
     graph.add_node("extract_and_validate_citations", extract_and_validate_citations)
     graph.add_node("check_context_sufficiency", check_context_sufficiency)
+    graph.add_node("rewrite_query", rewrite_query)
 
+    # Edges: main pipeline
     graph.set_entry_point("retrieve_vector")
     graph.add_edge("retrieve_vector", "retrieve_bm25")
     graph.add_edge("retrieve_bm25", "fuse_results")
@@ -343,17 +514,35 @@ def build_graph():
     graph.add_edge("rerank_chunks", "generate_answer")
     graph.add_edge("generate_answer", "extract_and_validate_citations")
     graph.add_edge("extract_and_validate_citations", "check_context_sufficiency")
-    graph.add_edge("check_context_sufficiency", END)
+
+    # Conditional edge: retry or end
+    graph.add_conditional_edges(
+        "check_context_sufficiency",
+        should_retry,
+        {
+            "retry": "rewrite_query",
+            "end": END,
+        },
+    )
+
+    # Rewrite loops back to retrieval
+    graph.add_edge("rewrite_query", "retrieve_vector")
+
     return graph.compile()
 
 
 rag_graph = build_graph()
 
 
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
 async def run_rag_chain(query: str, doc_ids: list[str] | None = None) -> dict:
     start = time.perf_counter()
     initial: RAGState = {
         "query": query,
+        "original_query": query,
         "doc_ids": doc_ids,
         "vector_results": [],
         "bm25_results": [],
@@ -363,14 +552,18 @@ async def run_rag_chain(query: str, doc_ids: list[str] | None = None) -> dict:
         "citations": [],
         "has_sufficient_context": True,
         "latency_ms": 0,
+        "retry_count": 0,
+        "rewrite_history": [],
+        "all_chunks_seen": [],
     }
     result = await rag_graph.ainvoke(initial)
     latency_ms = int((time.perf_counter() - start) * 1000)
     logger.info(
-        "RAG query complete query=%s chunks=%s citations=%s latency_ms=%s",
+        "RAG query complete query=%s chunks=%s citations=%s retries=%s latency_ms=%s",
         query,
         len(result.get("reranked_chunks", [])),
         len(result.get("citations", [])),
+        result.get("retry_count", 0),
         latency_ms,
     )
     return {
@@ -379,4 +572,6 @@ async def run_rag_chain(query: str, doc_ids: list[str] | None = None) -> dict:
         "citations": result.get("citations", []),
         "chunks_used": result.get("reranked_chunks", []),
         "latency_ms": latency_ms,
+        "retry_count": result.get("retry_count", 0),
+        "rewrite_history": result.get("rewrite_history", []),
     }

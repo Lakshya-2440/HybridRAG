@@ -1,7 +1,7 @@
 "use client";
 
 import { KeyboardEvent, useState } from "react";
-import { AlertTriangle, Send, Zap } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, RefreshCw, Send, Zap } from "lucide-react";
 import type { Citation, Chunk } from "@/lib/api";
 import { useChat } from "@/hooks/useChat";
 import { LoadingDots } from "./LoadingDots";
@@ -14,6 +14,7 @@ interface ChatInterfaceProps {
 export function ChatInterface({ selectedDocIds, onCitations }: ChatInterfaceProps) {
   const [input, setInput] = useState("");
   const { messages, loading, error, sendMessage } = useChat();
+  const [expandedRewrites, setExpandedRewrites] = useState<Set<string>>(new Set());
 
   async function submit() {
     const message = await sendMessage(input, selectedDocIds.length ? selectedDocIds : null);
@@ -28,6 +29,15 @@ export function ChatInterface({ selectedDocIds, onCitations }: ChatInterfaceProp
       event.preventDefault();
       void submit();
     }
+  }
+
+  function toggleRewrites(messageId: string) {
+    setExpandedRewrites((prev) => {
+      const next = new Set(prev);
+      if (next.has(messageId)) next.delete(messageId);
+      else next.add(messageId);
+      return next;
+    });
   }
 
   return (
@@ -47,13 +57,30 @@ export function ChatInterface({ selectedDocIds, onCitations }: ChatInterfaceProp
                   : "border-line bg-white text-ink shadow-sm"
               }`}
             >
+              {/* Self-correction badge */}
+              {message.role === "assistant" && (message.retry_count ?? 0) > 0 && (
+                <div className="mb-3 flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-blue-900">
+                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  <span>
+                    Self-corrected after {message.retry_count} {message.retry_count === 1 ? "retry" : "retries"}
+                  </span>
+                </div>
+              )}
+
+              {/* Insufficient context warning */}
               {message.has_sufficient_context === false && (
                 <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-amber-900">
                   <AlertTriangle className="h-4 w-4" aria-hidden />
-                  <span>Documents don&apos;t contain enough information to answer this.</span>
+                  <span>
+                    {(message.retry_count ?? 0) >= 3
+                      ? "Best-effort answer after max retries — documents may not cover this topic."
+                      : "Documents don\u0027t contain enough information to answer this."}
+                  </span>
                 </div>
               )}
+
               <p className="whitespace-pre-wrap">{message.content}</p>
+
               {message.role === "assistant" && (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
@@ -68,6 +95,40 @@ export function ChatInterface({ selectedDocIds, onCitations }: ChatInterfaceProp
                       <Zap className="h-3 w-3" aria-hidden />
                       {(message.latency_ms / 1000).toFixed(1)}s
                     </span>
+                  )}
+                  {(message.retry_count ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">
+                      <RefreshCw className="h-3 w-3" aria-hidden />
+                      {message.retry_count} {message.retry_count === 1 ? "retry" : "retries"}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Rewrite history (collapsible) */}
+              {message.rewrite_history && message.rewrite_history.length > 0 && (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleRewrites(message.id)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-stone-500 hover:text-stone-700"
+                  >
+                    {expandedRewrites.has(message.id) ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                    Query rewrites ({message.rewrite_history.length})
+                  </button>
+                  {expandedRewrites.has(message.id) && (
+                    <div className="mt-1 space-y-1 rounded-md border border-stone-200 bg-stone-50 p-2">
+                      {message.rewrite_history.map((rewrite, idx) => (
+                        <div key={idx} className="text-xs text-stone-600">
+                          <span className="font-mono text-stone-400">#{idx + 1}</span>{" "}
+                          <span className="italic">&ldquo;{rewrite}&rdquo;</span>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
