@@ -19,6 +19,8 @@ Render Backend (FastAPI)
   +--------> BM25 JSON corpus
   +--------> SQLite metadata + eval logs
 ```
+![Architecture Diagram](diagram.png)
+
 
 ## Quick Start (Local)
 
