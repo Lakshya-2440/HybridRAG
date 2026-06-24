@@ -68,12 +68,27 @@ class RAGState(TypedDict):
 # ---------------------------------------------------------------------------
 
 def get_llm():
+    from openai import OpenAI, AsyncOpenAI
     headers = {
         "HTTP-Referer": "https://rag-system.app",
         "X-Title": "RAG System",
         "Authorization": f"Bearer {settings.openrouter_api_key}",
     }
+    sync_client = OpenAI(
+        api_key=settings.openrouter_api_key,
+        base_url="https://openrouter.ai/api/v1",
+        default_headers=headers,
+        http_client=httpx.Client(base_url="https://openrouter.ai/api/v1", headers=headers),
+    )
+    async_client = AsyncOpenAI(
+        api_key=settings.openrouter_api_key,
+        base_url="https://openrouter.ai/api/v1",
+        default_headers=headers,
+        http_client=httpx.AsyncClient(base_url="https://openrouter.ai/api/v1", headers=headers),
+    )
     return ChatOpenAI(
+        client=sync_client,
+        async_client=async_client,
         api_key=settings.openrouter_api_key,
         openai_api_key=settings.openrouter_api_key,
         base_url="https://openrouter.ai/api/v1",
@@ -83,8 +98,6 @@ def get_llm():
         max_tokens=800,
         default_headers=headers,
         model_kwargs={"extra_headers": headers},
-        http_client=httpx.Client(base_url="https://openrouter.ai/api/v1", headers=headers),
-        http_async_client=httpx.AsyncClient(base_url="https://openrouter.ai/api/v1", headers=headers),
     )
 
 
