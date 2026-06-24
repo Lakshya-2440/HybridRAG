@@ -86,8 +86,8 @@ def get_langchain_embeddings() -> OpenAIEmbeddings:
         http_client=httpx.AsyncClient(base_url="https://openrouter.ai/api/v1", headers=headers),
     )
     return OpenAIEmbeddings(
-        client=sync_client,
-        async_client=async_client,
+        client=sync_client.embeddings,
+        async_client=async_client.embeddings,
         api_key=settings.openrouter_api_key,
         openai_api_key=settings.openrouter_api_key,
         openai_api_base="https://openrouter.ai/api/v1",

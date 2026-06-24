@@ -87,8 +87,8 @@ def get_llm():
         http_client=httpx.AsyncClient(base_url="https://openrouter.ai/api/v1", headers=headers),
     )
     return ChatOpenAI(
-        client=sync_client,
-        async_client=async_client,
+        client=sync_client.chat.completions,
+        async_client=async_client.chat.completions,
         api_key=settings.openrouter_api_key,
         openai_api_key=settings.openrouter_api_key,
         base_url="https://openrouter.ai/api/v1",
