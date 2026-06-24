@@ -46,7 +46,7 @@ def get_embedding_client() -> OpenAI:
         api_key=settings.openrouter_api_key,
         base_url="https://openrouter.ai/api/v1",
         default_headers=headers,
-        http_client=httpx.Client(headers=headers),
+        http_client=httpx.Client(base_url="https://openrouter.ai/api/v1", headers=headers),
     )
 
 
@@ -79,8 +79,8 @@ def get_langchain_embeddings() -> OpenAIEmbeddings:
         model=settings.embedding_model,
         default_headers=headers,
         model_kwargs={"extra_headers": headers},
-        http_client=httpx.Client(headers=headers),
-        http_async_client=httpx.AsyncClient(headers=headers),
+        http_client=httpx.Client(base_url="https://openrouter.ai/api/v1", headers=headers),
+        http_async_client=httpx.AsyncClient(base_url="https://openrouter.ai/api/v1", headers=headers),
     )
 
 

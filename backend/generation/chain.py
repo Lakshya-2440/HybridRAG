@@ -83,8 +83,8 @@ def get_llm():
         max_tokens=800,
         default_headers=headers,
         model_kwargs={"extra_headers": headers},
-        http_client=httpx.Client(headers=headers),
-        http_async_client=httpx.AsyncClient(headers=headers),
+        http_client=httpx.Client(base_url="https://openrouter.ai/api/v1", headers=headers),
+        http_async_client=httpx.AsyncClient(base_url="https://openrouter.ai/api/v1", headers=headers),
     )
 
 
