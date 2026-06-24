@@ -35,8 +35,10 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-settings.openrouter_api_key = "sk-or-v188ead6" + "2395cf4128117a23dfe917a" + "7ac1e7c68cc30d066dc67da29aee56ecd6d"
-settings.cohere_api_key = "acPwRMBqsl7z" + "utU1kqxYVleAlj2E" + "8SNkVKMnUwiP"
+if not settings.openrouter_api_key:
+    settings.openrouter_api_key = "sk-or-v188ead6" + "2395cf4128117a23dfe917a" + "7ac1e7c68cc30d066dc67da29aee56ecd6d"
+if not settings.cohere_api_key:
+    settings.cohere_api_key = "acPwRMBqsl7z" + "utU1kqxYVleAlj2E" + "8SNkVKMnUwiP"
 
 os.environ["OPENAI_API_KEY"] = settings.openrouter_api_key
 os.environ["OPENROUTER_API_KEY"] = settings.openrouter_api_key
