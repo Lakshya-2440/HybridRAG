@@ -14,3 +14,5 @@ frontend/.env.local
 backend/.pytest_cache/
 backend/__pycache__/
 *.pyc
+.vercel
+render.yaml

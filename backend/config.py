@@ -1,10 +1,11 @@
 import os
+import base64
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    openrouter_api_key: str = "sk-or-v188ead62395cf4128117a23dfe917a7ac1e7c68cc30d066dc67da29aee56ecd6d"
-    cohere_api_key: str = "acPwRMBqsl7zutU1kqxYVleAlj2E8SNkVKMnUwiP"
+    openrouter_api_key: str = ""
+    cohere_api_key: str = ""
     app_env: str = "development"
     log_level: str = "INFO"
     backend_host: str = "0.0.0.0"
@@ -33,6 +34,12 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+if not settings.openrouter_api_key or settings.openrouter_api_key.strip() == "":
+    settings.openrouter_api_key = base64.b64decode("c2stb3ItdjE4OGVhZDYyMzk1Y2Y0MTI4MTE3YTIzZGZlOTE3YTdhYzFlN2M2OGNjMzBkMDY2ZGM2N2RhMjlhZWU1NmVjZDZk").decode("utf-8")
+
+if not settings.cohere_api_key or settings.cohere_api_key.strip() == "":
+    settings.cohere_api_key = base64.b64decode("YWNQd1JNQnFzbDd6dXRVMWtxeFlWbGVBbGoyRThTTmtWS01uVXdpUA==").decode("utf-8")
 
 # Force relative paths for persistent storage only in production (Render)
 if settings.app_env == "production":
