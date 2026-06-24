@@ -68,36 +68,34 @@ class RAGState(TypedDict):
 # ---------------------------------------------------------------------------
 
 class OpenRouterLLM:
-    def __init__(self, client, model):
-        self.client = client
+    def __init__(self, api_key, model):
+        self.api_key = api_key
         self.model = model
 
     def invoke(self, prompt: str):
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": str(prompt)}],
-            temperature=0.0,
-            max_tokens=800,
-        )
+        import requests
+        headers = {
+            "HTTP-Referer": "https://rag-system.app",
+            "X-Title": "RAG System",
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": str(prompt)}],
+            "temperature": 0.0,
+            "max_tokens": 800,
+        }
+        resp = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
         class Response:
-            content = response.choices[0].message.content
+            content = data["choices"][0]["message"]["content"]
         return Response()
 
 
 def get_llm():
-    from openai import OpenAI
-    headers = {
-        "HTTP-Referer": "https://rag-system.app",
-        "X-Title": "RAG System",
-        "Authorization": f"Bearer {settings.openrouter_api_key}",
-    }
-    sync_client = OpenAI(
-        api_key=settings.openrouter_api_key,
-        base_url="https://openrouter.ai/api/v1",
-        default_headers=headers,
-        http_client=httpx.Client(base_url="https://openrouter.ai/api/v1", headers=headers),
-    )
-    return OpenRouterLLM(sync_client, settings.llm_model)
+    return OpenRouterLLM(settings.openrouter_api_key, settings.llm_model)
 
 
 # ---------------------------------------------------------------------------

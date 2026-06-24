@@ -36,33 +36,28 @@ def _local_embedding(text: str) -> list[float]:
     return [value / norm for value in vector]
 
 
-def get_embedding_client() -> OpenAI:
-    headers = {
-        "HTTP-Referer": "https://rag-system.app",
-        "X-Title": "RAG System",
-        "Authorization": f"Bearer {settings.openrouter_api_key}",
-    }
-    return OpenAI(
-        api_key=settings.openrouter_api_key,
-        base_url="https://openrouter.ai/api/v1",
-        default_headers=headers,
-        http_client=httpx.Client(base_url="https://openrouter.ai/api/v1", headers=headers),
-    )
-
-
 def embed_texts(texts: list[str]) -> list[list[float]]:
     if not settings.use_remote_models:
         return [_local_embedding(text) for text in texts]
 
-    client = get_embedding_client()
+    import requests
+    headers = {
+        "HTTP-Referer": "https://rag-system.app",
+        "X-Title": "RAG System",
+        "Authorization": f"Bearer {settings.openrouter_api_key}",
+        "Content-Type": "application/json",
+    }
     embeddings: list[list[float]] = []
     for start in range(0, len(texts), BATCH_SIZE):
         batch = texts[start : start + BATCH_SIZE]
-        response = client.embeddings.create(
-            model=settings.embedding_model,
-            input=batch,
-        )
-        embeddings.extend([item.embedding for item in response.data])
+        payload = {
+            "model": settings.embedding_model,
+            "input": batch,
+        }
+        resp = requests.post("https://openrouter.ai/api/v1/embeddings", headers=headers, json=payload, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        embeddings.extend([item["embedding"] for item in data["data"]])
     return embeddings
 
 
