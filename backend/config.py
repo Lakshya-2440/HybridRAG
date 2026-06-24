@@ -42,7 +42,7 @@ if not settings.cohere_api_key or settings.cohere_api_key.strip() == "":
     settings.cohere_api_key = base64.b64decode("YWNQd1JNQnFzbDd6dXRVMWtxeFlWbGVBbGoyRThTTmtWS01uVXdpUA==").decode("utf-8")
 
 # Force relative paths for persistent storage only in production (Render)
-if settings.app_env == "production":
+if settings.app_env == "production" or "RENDER" in os.environ or "/data" in settings.upload_dir:
     settings.chroma_persist_dir = "./data/chroma_db"
     settings.database_url = "sqlite:///./data/rag.db"
     settings.upload_dir = "./data/uploads"
