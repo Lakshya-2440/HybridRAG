@@ -556,8 +556,20 @@ rag_graph = build_graph()
 # Public API
 # ---------------------------------------------------------------------------
 
+QUERY_CACHE: dict[str, dict] = {}
+
+
 async def run_rag_chain(query: str, doc_ids: list[str] | None = None) -> dict:
     start = time.perf_counter()
+    cache_key = f"{query}:{','.join(sorted(doc_ids)) if doc_ids else 'all'}"
+    if cache_key in QUERY_CACHE:
+        cached = QUERY_CACHE[cache_key]
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        logger.info("RAG query served from cache query=%s latency_ms=%s", query, latency_ms)
+        cached_copy = dict(cached)
+        cached_copy["latency_ms"] = latency_ms
+        return cached_copy
+
     initial: RAGState = {
         "query": query,
         "original_query": query,
@@ -584,7 +596,7 @@ async def run_rag_chain(query: str, doc_ids: list[str] | None = None) -> dict:
         result.get("retry_count", 0),
         latency_ms,
     )
-    return {
+    result_dict = {
         "answer": result.get("raw_answer", ""),
         "has_sufficient_context": result.get("has_sufficient_context", True),
         "citations": result.get("citations", []),
@@ -593,3 +605,6 @@ async def run_rag_chain(query: str, doc_ids: list[str] | None = None) -> dict:
         "retry_count": result.get("retry_count", 0),
         "rewrite_history": result.get("rewrite_history", []),
     }
+    QUERY_CACHE[cache_key] = result_dict
+    return result_dict
+
